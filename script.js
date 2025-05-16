@@ -355,3 +355,137 @@ document.addEventListener('DOMContentLoaded', function() {
         addMessageToChat(response, 'bot');
     }
 });
+
+// Replace the signup, login, and chat-related functions in script.js
+
+// Signup Form Validation
+const signupForm = document.getElementById('signupForm');
+if (signupForm) {
+    signupForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const formData = new FormData(signupForm);
+
+        try {
+            const response = await fetch('/signup', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+
+            document.querySelectorAll('.error-message').forEach(el => el.remove());
+            if (!result.success) {
+                for (const [field, message] of Object.entries(result.errors)) {
+                    const input = document.getElementById(field);
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'error-message';
+                    errorDiv.textContent = message;
+                    input.parentElement.appendChild(errorDiv);
+                }
+            } else {
+                window.location.href = result.redirect;
+            }
+        } catch (error) {
+            console.error('Signup error:', error);
+        }
+    });
+}
+
+// Login Form Validation
+const loginForm = document.getElementById('loginForm');
+if (loginForm) {
+    loginForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const formData = new FormData(loginForm);
+
+        try {
+            const response = await fetch('/login', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+
+            document.querySelectorAll('.error-message').forEach(el => el.remove());
+            if (!result.success) {
+                for (const [field, message] of Object.entries(result.errors)) {
+                    const input = document.getElementById(field);
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'error-message';
+                    errorDiv.textContent = message;
+                    input.parentElement.appendChild(errorDiv);
+                }
+            } else {
+                window.location.href = result.redirect;
+            }
+        } catch (error) {
+            console.error('Login error:', error);
+        }
+    });
+}
+
+// Navigation Auth State (replace localStorage logic)
+const authLink = document.getElementById('authLink');
+if (authLink) {
+    fetch('/check_session')
+        .then(response => response.json())
+        .then(data => {
+            if (data.isLoggedIn) {
+                authLink.textContent = 'Logout';
+                authLink.href = '/logout';
+            } else {
+                authLink.textContent = 'Sign Up';
+                authLink.href = '/signup';
+            }
+        });
+}
+
+// Send user message and get AI response
+async function sendUserMessage() {
+    const message = userMessageInput.value.trim();
+    const skills = document.getElementById('getResults') ? collectSkills() : null;
+
+    if (message || skills) {
+        if (message) {
+            addMessageToChat(message, 'user');
+        }
+        userMessageInput.value = '';
+
+        try {
+            const response = await fetch('/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message, skills })
+            });
+            const result = await response.json();
+            if (result.type === 'recommendation') {
+                addRecommendationToChat(result.message);
+            } else {
+                addMessageToChat(result.message, 'bot');
+            }
+        } catch (error) {
+            console.error('Chat error:', error);
+        }
+    }
+}
+
+function collectSkills() {
+    const skills = {};
+    document.querySelectorAll('.rating').forEach(rating => {
+        const skill = rating.getAttribute('data-skill');
+        const value = rating.getAttribute('data-rating') || '0';
+        skills[skill] = parseInt(value);
+    });
+    return skills;
+}
+
+function addRecommendationToChat(message) {
+    const chatMessages = document.querySelector('.chat-messages');
+    if (chatMessages) {
+        const messageElement = document.createElement('div');
+        messageElement.className = 'message bot-message';
+        messageElement.innerHTML = `<p>${message}</p>`;
+        chatMessages.appendChild(messageElement);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+}
+
+// Rest of the script.js remains unchanged
